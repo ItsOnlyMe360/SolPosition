@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa 3D com Bússola</title>
+    <title>Mapa 3D com Bússola e Posição do Sol</title>
     <style>
         body {
             margin: 0;
@@ -27,10 +27,31 @@
             color: red;
             font-weight: bold;
         }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+        #controls input {
+            margin-top: 5px;
+            color: black;
+        }
     </style>
 </head>
 <body>
     <div id="info">Carregando localização...</div>
+    <div id="controls">
+        <label for="date">Escolha a data:</label>
+        <input type="date" id="date" name="date">
+        <label for="time">Escolha o horário:</label>
+        <input type="time" id="time" name="time">
+        <button onclick="updateSunPositionFromInputs()">Atualizar Sol</button>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.8.0/suncalc.min.js"></script>
     <script>
@@ -71,9 +92,9 @@
         scene.add(compass);
 
         // Atualiza posição do Sol e orientação da bússola
-        function updateSunAndCompass(latitude, longitude) {
-            const times = SunCalc.getTimes(new Date(), latitude, longitude);
-            const sunPosition = SunCalc.getPosition(new Date(), latitude, longitude);
+        function updateSunAndCompass(latitude, longitude, selectedDate) {
+            const times = SunCalc.getTimes(selectedDate, latitude, longitude);
+            const sunPosition = SunCalc.getPosition(selectedDate, latitude, longitude);
 
             // Atualizar informações
             document.getElementById('info').innerHTML = `
@@ -157,7 +178,8 @@
                     (position) => {
                         const latitude = position.coords.latitude;
                         const longitude = position.coords.longitude;
-                        updateSunAndCompass(latitude, longitude);
+                        const currentDate = new Date(); // Usa a data atual como default
+                        updateSunAndCompass(latitude, longitude, currentDate);
                     },
                     (error) => {
                         handleLocationError(error);
@@ -186,13 +208,37 @@
             document.getElementById('info').innerHTML = `<span id='error'>${message}</span>`;
         }
 
+        // Função para atualizar a posição do sol com base na data e horário escolhidos
+        function updateSunPositionFromInputs() {
+            const dateInput = document.getElementById('date').value;
+            const timeInput = document.getElementById('time').value;
+
+            if (!dateInput || !timeInput) {
+                alert("Por favor, selecione uma data e um horário.");
+                return;
+            }
+
+            const selectedDate = new Date(dateInput + 'T' + timeInput + ':00');
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    updateSunAndCompass(latitude, longitude, selectedDate);
+                },
+                (error) => {
+                    handleLocationError(error);
+                }
+            );
+        }
+
         // Renderização da cena
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
 
-        // Iniciar localização e animação
+        // Iniciar
         getLocation();
         animate();
     </script>
