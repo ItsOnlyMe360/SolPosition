@@ -62,9 +62,16 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Criar plano (chão)
+        // Criar plano (chão) com textura repetida
+        const textureLoader = new THREE.TextureLoader();
+        const floorTexture = textureLoader.load('https://f.feridinha.com/DuWTY.jpeg'); // Usando a imagem como textura
+
+        // Configurar a repetição da textura
+        floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+        floorTexture.repeat.set(10, 10); // Definindo a repetição da textura no eixo X e Y
+
         const planeGeometry = new THREE.PlaneGeometry(100, 100);
-        const planeMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+        const planeMaterial = new THREE.MeshLambertMaterial({ map: floorTexture });
         const plane = new THREE.Mesh(planeGeometry, planeMaterial);
         plane.rotation.x = -Math.PI / 2;
         scene.add(plane);
