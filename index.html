@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa 3D com Sol</title>
+    <title>Mapa 3D com Bússola</title>
     <style>
         body {
             margin: 0;
@@ -61,8 +61,17 @@
         const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
         scene.add(sunMesh);
 
-        // Atualiza posição do Sol
-        function updateSunPosition(latitude, longitude) {
+        // Adicionar bússola
+        const compassTexture = new THREE.TextureLoader().load('https://png.pngtree.com/png-vector/20230603/ourmid/pngtree-compass-needle-red-white-vector-png-image_7118194.png');
+        const compassMaterial = new THREE.MeshBasicMaterial({ map: compassTexture, transparent: true });
+        const compassGeometry = new THREE.PlaneGeometry(10, 10);
+        const compass = new THREE.Mesh(compassGeometry, compassMaterial);
+        compass.rotation.x = -Math.PI / 2; // Deitar no chão
+        compass.position.set(0, 0.01, 0); // Pequena elevação para não colidir com o chão
+        scene.add(compass);
+
+        // Atualiza posição do Sol e orientação da bússola
+        function updateSunAndCompass(latitude, longitude) {
             const times = SunCalc.getTimes(new Date(), latitude, longitude);
             const sunPosition = SunCalc.getPosition(new Date(), latitude, longitude);
 
@@ -88,6 +97,10 @@
             // Posicionar Sol
             sunLight.position.set(x, y, z);
             sunMesh.position.set(x, y, z);
+
+            // Orientar a bússola para apontar para o norte
+            const northAzimuth = -longitude * (Math.PI / 180); // Aproximar o norte geográfico
+            compass.rotation.z = northAzimuth;
         }
 
         // Configuração inicial da câmera
@@ -144,7 +157,7 @@
                     (position) => {
                         const latitude = position.coords.latitude;
                         const longitude = position.coords.longitude;
-                        updateSunPosition(latitude, longitude);
+                        updateSunAndCompass(latitude, longitude);
                     },
                     (error) => {
                         handleLocationError(error);
