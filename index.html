@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa 3D com Sol</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 10;
+            max-width: 90%;
+            word-wrap: break-word;
+        }
+        #error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Carregando localização...</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.8.0/suncalc.min.js"></script>
+    <script>
+        // Configuração inicial
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Criar plano (chão)
+        const planeGeometry = new THREE.PlaneGeometry(100, 100);
+        const planeMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        scene.add(plane);
+
+        // Luz ambiente
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+        scene.add(ambientLight);
+
+        // Luz e representação do Sol
+        const sunLight = new THREE.PointLight(0xffff00, 1.5, 200);
+        scene.add(sunLight);
+
+        const sunGeometry = new THREE.SphereGeometry(1, 32, 32);
+        const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+        scene.add(sunMesh);
+
+        // Atualiza posição do Sol
+        function updateSunPosition(latitude, longitude) {
+            const times = SunCalc.getTimes(new Date(), latitude, longitude);
+            const sunPosition = SunCalc.getPosition(new Date(), latitude, longitude);
+
+            // Atualizar informações
+            document.getElementById('info').innerHTML = `
+                Latitude: ${latitude.toFixed(6)}<br>
+                Longitude: ${longitude.toFixed(6)}<br>
+                Nascer do Sol: ${times.sunrise.toLocaleTimeString()}<br>
+                Pôr do Sol: ${times.sunset.toLocaleTimeString()}<br>
+                Azimute: ${(sunPosition.azimuth * (180 / Math.PI)).toFixed(2)}°<br>
+                Altitude: ${(sunPosition.altitude * (180 / Math.PI)).toFixed(2)}°
+            `;
+
+            // Converter azimute e altitude para coordenadas cartesianas
+            const distance = 50;
+            const azimuth = sunPosition.azimuth;
+            const altitude = sunPosition.altitude;
+
+            const x = distance * Math.cos(altitude) * Math.sin(azimuth);
+            const y = distance * Math.sin(altitude);
+            const z = distance * Math.cos(altitude) * Math.cos(azimuth);
+
+            // Posicionar Sol
+            sunLight.position.set(x, y, z);
+            sunMesh.position.set(x, y, z);
+        }
+
+        // Verificar suporte à localização e obter coordenadas
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const latitude = position.coords.latitude;
+                        const longitude = position.coords.longitude;
+                        updateSunPosition(latitude, longitude);
+                    },
+                    (error) => {
+                        handleLocationError(error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0,
+                    }
+                );
+            } else {
+                document.getElementById('info').innerHTML = "<span id='error'>Geolocalização não suportada no seu navegador.</span>";
+            }
+        }
+
+        // Tratar erros de localização
+        function handleLocationError(error) {
+            let message = "Erro ao obter localização.";
+            if (error.code === error.PERMISSION_DENIED) {
+                message = "Permissão de localização negada.";
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+                message = "Informação de localização indisponível.";
+            } else if (error.code === error.TIMEOUT) {
+                message = "Tempo para obter localização expirou.";
+            }
+            document.getElementById('info').innerHTML = `<span id='error'>${message}</span>`;
+        }
+
+        // Configuração da câmera
+        camera.position.set(0, 20, 30);
+        camera.lookAt(0, 0, 0);
+
+        // Animação
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Iniciar localização
+        getLocation();
+    </script>
+</body>
+</html>
