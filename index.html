@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa 3D com Bússola e Posição do Sol</title>
+    <title>Mapa 3D com Posição do Sol</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #0d1a26, #001f3f); /* Céu noturno */
         }
         #info {
             position: absolute;
@@ -23,10 +24,6 @@
             max-width: 90%;
             word-wrap: break-word;
         }
-        #error {
-            color: red;
-            font-weight: bold;
-        }
         #controls {
             position: absolute;
             bottom: 10px;
@@ -37,11 +34,9 @@
             border-radius: 5px;
             z-index: 10;
         }
-
         .control-item {
-            margin-bottom: 10px; /* Adiciona espaçamento entre as linhas */
+            margin-bottom: 10px;
         }
-
         #controls input {
             margin-top: 5px;
             color: black;
@@ -51,34 +46,30 @@
 <body>
     <div id="info">Carregando localização...</div>
     <div id="controls">
-    <div class="control-item">
-        <label for="date">Escolha a data:</label>
-        <input type="date" id="date" name="date">
+        <div class="control-item">
+            <label for="date">Escolha a data:</label>
+            <input type="date" id="date" name="date">
+        </div>
+        <div class="control-item">
+            <label for="time">Escolha o horário:</label>
+            <input type="time" id="time" name="time">
+        </div>
+        <button onclick="updateSunPositionFromInputs()">Atualizar Sol</button>
     </div>
-    <div class="control-item">
-        <label for="time">Escolha o horário:</label>
-        <input type="time" id="time" name="time">
-    </div>
-    <button onclick="updateSunPositionFromInputs()">Atualizar Sol</button>
-</div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.8.0/suncalc.min.js"></script>
     <script>
-        // Configuração inicial
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Criar plano (chão) com textura repetida
+        // Textura do chão
         const textureLoader = new THREE.TextureLoader();
-        const floorTexture = textureLoader.load('https://f.feridinha.com/DuWTY.jpeg'); // Usando a imagem como textura
-
-        // Configurar a repetição da textura
+        const floorTexture = textureLoader.load('https://f.feridinha.com/DuWTY.jpeg');
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(10, 10); // Definindo a repetição da textura no eixo X e Y
+        floorTexture.repeat.set(10, 10);
 
         const planeGeometry = new THREE.PlaneGeometry(100, 100);
         const planeMaterial = new THREE.MeshLambertMaterial({ map: floorTexture });
@@ -86,12 +77,11 @@
         plane.rotation.x = -Math.PI / 2;
         scene.add(plane);
 
-        // Luz ambiente
-        const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+        // Luz ambiente e sol
+        const ambientLight = new THREE.AmbientLight(0xcccccc, 2); // Luz ambiente clara
         scene.add(ambientLight);
 
-        // Luz e representação do Sol
-        const sunLight = new THREE.PointLight(0xffff00, 1.5, 200);
+        const sunLight = new THREE.PointLight(0xffffaa, 1.5, 200); // Luz solar mais clara
         scene.add(sunLight);
 
         const sunGeometry = new THREE.SphereGeometry(1, 32, 32);
@@ -99,21 +89,10 @@
         const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
         scene.add(sunMesh);
 
-        // Adicionar bússola
-        const compassTexture = new THREE.TextureLoader().load('https://png.pngtree.com/png-vector/20230603/ourmid/pngtree-compass-needle-red-white-vector-png-image_7118194.png');
-        const compassMaterial = new THREE.MeshBasicMaterial({ map: compassTexture, transparent: true });
-        const compassGeometry = new THREE.PlaneGeometry(10, 10);
-        const compass = new THREE.Mesh(compassGeometry, compassMaterial);
-        compass.rotation.x = -Math.PI / 2; // Deitar no chão
-        compass.position.set(0, 0.01, 0); // Pequena elevação para não colidir com o chão
-        scene.add(compass);
-
-        // Atualiza posição do Sol e orientação da bússola
-        function updateSunAndCompass(latitude, longitude, selectedDate) {
+        function updateSun(latitude, longitude, selectedDate) {
             const times = SunCalc.getTimes(selectedDate, latitude, longitude);
             const sunPosition = SunCalc.getPosition(selectedDate, latitude, longitude);
 
-            // Atualizar informações
             document.getElementById('info').innerHTML = `
                 Latitude: ${latitude.toFixed(6)}<br>
                 Longitude: ${longitude.toFixed(6)}<br>
@@ -123,7 +102,6 @@
                 Altitude: ${(sunPosition.altitude * (180 / Math.PI)).toFixed(2)}°
             `;
 
-            // Converter azimute e altitude para coordenadas cartesianas
             const distance = 50;
             const azimuth = sunPosition.azimuth;
             const altitude = sunPosition.altitude;
@@ -132,22 +110,16 @@
             const y = distance * Math.sin(altitude);
             const z = distance * Math.cos(altitude) * Math.cos(azimuth);
 
-            // Posicionar Sol
             sunLight.position.set(x, y, z);
             sunMesh.position.set(x, y, z);
-
-            // Orientar a bússola para apontar para o norte
-            const northAzimuth = -longitude * (Math.PI / 180); // Aproximar o norte geográfico
-            compass.rotation.z = northAzimuth;
         }
 
         // Configuração inicial da câmera
-        camera.position.set(0, 2, 0); // Posição inicial da câmera no centro do plano
+        camera.position.set(0, 2, 0);
         const cameraRotation = { yaw: 0, pitch: 0 };
         const rotationSpeed = 0.005;
-        const pitchLimit = Math.PI / 2 - 0.1; // Limitar a inclinação vertical
+        const pitchLimit = Math.PI / 2 - 0.1;
 
-        // Controle de toque
         let isTouching = false;
         let lastTouch = { x: 0, y: 0 };
 
@@ -165,8 +137,6 @@
 
             cameraRotation.yaw -= deltaX * rotationSpeed;
             cameraRotation.pitch -= deltaY * rotationSpeed;
-
-            // Limitar o ângulo de inclinação
             cameraRotation.pitch = Math.max(-pitchLimit, Math.min(pitchLimit, cameraRotation.pitch));
 
             lastTouch.x = event.touches[0].clientX;
@@ -179,24 +149,30 @@
             isTouching = false;
         });
 
-        // Atualizar a rotação da câmera
         function updateCameraRotation() {
             const x = Math.cos(cameraRotation.pitch) * Math.sin(cameraRotation.yaw);
             const y = Math.sin(cameraRotation.pitch);
             const z = Math.cos(cameraRotation.pitch) * Math.cos(cameraRotation.yaw);
-
             camera.lookAt(camera.position.x + x, camera.position.y + y, camera.position.z + z);
         }
 
-        // Obter localização do usuário
+        function setDefaultDateTime() {
+            const now = new Date();
+            const dateInput = document.getElementById('date');
+            const timeInput = document.getElementById('time');
+
+            dateInput.value = now.toISOString().split('T')[0];
+            timeInput.value = now.toTimeString().slice(0, 5);
+        }
+
         function getLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         const latitude = position.coords.latitude;
                         const longitude = position.coords.longitude;
-                        const currentDate = new Date(); // Usa a data atual como default
-                        updateSunAndCompass(latitude, longitude, currentDate);
+                        const currentDate = new Date();
+                        updateSun(latitude, longitude, currentDate);
                     },
                     (error) => {
                         handleLocationError(error);
@@ -212,7 +188,6 @@
             }
         }
 
-        // Tratar erros de localização
         function handleLocationError(error) {
             let message = "Erro ao obter localização.";
             if (error.code === error.PERMISSION_DENIED) {
@@ -225,7 +200,6 @@
             document.getElementById('info').innerHTML = `<span id='error'>${message}</span>`;
         }
 
-        // Função para atualizar a posição do sol com base na data e horário escolhidos
         function updateSunPositionFromInputs() {
             const dateInput = document.getElementById('date').value;
             const timeInput = document.getElementById('time').value;
@@ -241,7 +215,7 @@
                 (position) => {
                     const latitude = position.coords.latitude;
                     const longitude = position.coords.longitude;
-                    updateSunAndCompass(latitude, longitude, selectedDate);
+                    updateSun(latitude, longitude, selectedDate);
                 },
                 (error) => {
                     handleLocationError(error);
@@ -249,15 +223,15 @@
             );
         }
 
-        // Renderização da cena
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
 
-        // Iniciar
+        setDefaultDateTime();
         getLocation();
         animate();
     </script>
 </body>
-</html>
+    </html>
+    
