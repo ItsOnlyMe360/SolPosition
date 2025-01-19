@@ -37,6 +37,11 @@
             border-radius: 5px;
             z-index: 10;
         }
+
+        .control-item {
+            margin-bottom: 10px; /* Adiciona espaçamento entre as linhas */
+        }
+
         #controls input {
             margin-top: 5px;
             color: black;
@@ -46,12 +51,17 @@
 <body>
     <div id="info">Carregando localização...</div>
     <div id="controls">
+    <div class="control-item">
         <label for="date">Escolha a data:</label>
         <input type="date" id="date" name="date">
+    </div>
+    <div class="control-item">
         <label for="time">Escolha o horário:</label>
         <input type="time" id="time" name="time">
-        <button onclick="updateSunPositionFromInputs()">Atualizar Sol</button>
     </div>
+    <button onclick="updateSunPositionFromInputs()">Atualizar Sol</button>
+</div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.8.0/suncalc.min.js"></script>
     <script>
