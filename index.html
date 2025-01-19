@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mapa 3D com Posição do Sol</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body {
             margin: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
-            background: linear-gradient(to bottom, #0d1a26, #001f3f); /* Céu noturno */
+            background: linear-gradient(to bottom, #0d1a26, #001f3f);
         }
         #info {
             position: absolute;
@@ -41,6 +42,11 @@
             margin-top: 5px;
             color: black;
         }
+        #map {
+            display: none;
+            width: 512px;
+            height: 512px;
+        }
     </style>
 </head>
 <body>
@@ -56,8 +62,11 @@
         </div>
         <button onclick="updateSunPositionFromInputs()">Atualizar Sol</button>
     </div>
+    <div id="map"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.8.0/suncalc.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -65,23 +74,27 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Textura do chão
-        const textureLoader = new THREE.TextureLoader();
-        const floorTexture = textureLoader.load('https://f.feridinha.com/DuWTY.jpeg');
-        floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(10, 10);
+        // Mapa Leaflet como textura
+        const mapElement = document.getElementById("map");
+        const map = L.map(mapElement, {
+            center: [0, 0],
+            zoom: 16,
+            zoomControl: false,
+            attributionControl: false
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+        }).addTo(map);
 
         const planeGeometry = new THREE.PlaneGeometry(100, 100);
-        const planeMaterial = new THREE.MeshLambertMaterial({ map: floorTexture });
-        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-        plane.rotation.x = -Math.PI / 2;
-        scene.add(plane);
+        let planeMaterial, plane;
 
         // Luz ambiente e sol
-        const ambientLight = new THREE.AmbientLight(0xcccccc, 2); // Luz ambiente clara
+        const ambientLight = new THREE.AmbientLight(0xcccccc, 2);
         scene.add(ambientLight);
 
-        const sunLight = new THREE.PointLight(0xffffaa, 1.5, 200); // Luz solar mais clara
+        const sunLight = new THREE.PointLight(0xffffaa, 1.5, 200);
         scene.add(sunLight);
 
         const sunGeometry = new THREE.SphereGeometry(1, 32, 32);
@@ -114,55 +127,22 @@
             sunMesh.position.set(x, y, z);
         }
 
-        // Configuração inicial da câmera
-        camera.position.set(0, 2, 0);
-        const cameraRotation = { yaw: 0, pitch: 0 };
-        const rotationSpeed = 0.005;
-        const pitchLimit = Math.PI / 2 - 0.1;
+        function updateMap(latitude, longitude) {
+            map.setView([latitude, longitude]);
+            map.invalidateSize();
 
-        let isTouching = false;
-        let lastTouch = { x: 0, y: 0 };
+            html2canvas(mapElement).then(canvas => {
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(10, 10);
 
-        document.addEventListener("touchstart", (event) => {
-            isTouching = true;
-            lastTouch.x = event.touches[0].clientX;
-            lastTouch.y = event.touches[0].clientY;
-        });
+                if (plane) scene.remove(plane);
 
-        document.addEventListener("touchmove", (event) => {
-            if (!isTouching) return;
-
-            const deltaX = event.touches[0].clientX - lastTouch.x;
-            const deltaY = event.touches[0].clientY - lastTouch.y;
-
-            cameraRotation.yaw -= deltaX * rotationSpeed;
-            cameraRotation.pitch -= deltaY * rotationSpeed;
-            cameraRotation.pitch = Math.max(-pitchLimit, Math.min(pitchLimit, cameraRotation.pitch));
-
-            lastTouch.x = event.touches[0].clientX;
-            lastTouch.y = event.touches[0].clientY;
-
-            updateCameraRotation();
-        });
-
-        document.addEventListener("touchend", () => {
-            isTouching = false;
-        });
-
-        function updateCameraRotation() {
-            const x = Math.cos(cameraRotation.pitch) * Math.sin(cameraRotation.yaw);
-            const y = Math.sin(cameraRotation.pitch);
-            const z = Math.cos(cameraRotation.pitch) * Math.cos(cameraRotation.yaw);
-            camera.lookAt(camera.position.x + x, camera.position.y + y, camera.position.z + z);
-        }
-
-        function setDefaultDateTime() {
-            const now = new Date();
-            const dateInput = document.getElementById('date');
-            const timeInput = document.getElementById('time');
-
-            dateInput.value = now.toISOString().split('T')[0];
-            timeInput.value = now.toTimeString().slice(0, 5);
+                planeMaterial = new THREE.MeshLambertMaterial({ map: texture });
+                plane = new THREE.Mesh(planeGeometry, planeMaterial);
+                plane.rotation.x = -Math.PI / 2;
+                scene.add(plane);
+            });
         }
 
         function getLocation() {
@@ -173,6 +153,7 @@
                         const longitude = position.coords.longitude;
                         const currentDate = new Date();
                         updateSun(latitude, longitude, currentDate);
+                        updateMap(latitude, longitude);
                     },
                     (error) => {
                         handleLocationError(error);
@@ -200,35 +181,11 @@
             document.getElementById('info').innerHTML = `<span id='error'>${message}</span>`;
         }
 
-        function updateSunPositionFromInputs() {
-            const dateInput = document.getElementById('date').value;
-            const timeInput = document.getElementById('time').value;
-
-            if (!dateInput || !timeInput) {
-                alert("Por favor, selecione uma data e um horário.");
-                return;
-            }
-
-            const selectedDate = new Date(dateInput + 'T' + timeInput + ':00');
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const latitude = position.coords.latitude;
-                    const longitude = position.coords.longitude;
-                    updateSun(latitude, longitude, selectedDate);
-                },
-                (error) => {
-                    handleLocationError(error);
-                }
-            );
-        }
-
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
 
-        setDefaultDateTime();
         getLocation();
         animate();
     </script>
