@@ -90,7 +90,43 @@
             sunMesh.position.set(x, y, z);
         }
 
-        // Verificar suporte à localização e obter coordenadas
+        // Configuração inicial da câmera
+        camera.position.set(0, 5, 10); // A câmera começa no centro
+        camera.lookAt(0, 0, 0);
+
+        // Controle de toque para rotação
+        let isDragging = false;
+        let previousTouch = { x: 0, y: 0 };
+        const rotationSpeed = 0.005;
+
+        document.addEventListener("touchstart", (event) => {
+            isDragging = true;
+            previousTouch.x = event.touches[0].clientX;
+            previousTouch.y = event.touches[0].clientY;
+        });
+
+        document.addEventListener("touchmove", (event) => {
+            if (!isDragging) return;
+
+            const deltaX = event.touches[0].clientX - previousTouch.x;
+            const deltaY = event.touches[0].clientY - previousTouch.y;
+
+            // Atualizar rotação da câmera
+            camera.rotation.y -= deltaX * rotationSpeed;
+            camera.rotation.x -= deltaY * rotationSpeed;
+
+            // Limitar a rotação vertical
+            camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+
+            previousTouch.x = event.touches[0].clientX;
+            previousTouch.y = event.touches[0].clientY;
+        });
+
+        document.addEventListener("touchend", () => {
+            isDragging = false;
+        });
+
+        // Obter localização do usuário
         function getLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
@@ -126,19 +162,15 @@
             document.getElementById('info').innerHTML = `<span id='error'>${message}</span>`;
         }
 
-        // Configuração da câmera
-        camera.position.set(0, 20, 30);
-        camera.lookAt(0, 0, 0);
-
-        // Animação
+        // Renderização da cena
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
-        animate();
 
-        // Iniciar localização
+        // Iniciar localização e animação
         getLocation();
+        animate();
     </script>
 </body>
 </html>
