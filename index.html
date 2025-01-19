@@ -91,40 +91,51 @@
         }
 
         // Configuração inicial da câmera
-        camera.position.set(0, 5, 10); // A câmera começa no centro
-        camera.lookAt(0, 0, 0);
-
-        // Controle de toque para rotação
-        let isDragging = false;
-        let previousTouch = { x: 0, y: 0 };
+        camera.position.set(0, 2, 0); // Posição inicial da câmera no centro do plano
+        const cameraRotation = { yaw: 0, pitch: 0 };
         const rotationSpeed = 0.005;
+        const pitchLimit = Math.PI / 2 - 0.1; // Limitar a inclinação vertical
+
+        // Controle de toque
+        let isTouching = false;
+        let lastTouch = { x: 0, y: 0 };
 
         document.addEventListener("touchstart", (event) => {
-            isDragging = true;
-            previousTouch.x = event.touches[0].clientX;
-            previousTouch.y = event.touches[0].clientY;
+            isTouching = true;
+            lastTouch.x = event.touches[0].clientX;
+            lastTouch.y = event.touches[0].clientY;
         });
 
         document.addEventListener("touchmove", (event) => {
-            if (!isDragging) return;
+            if (!isTouching) return;
 
-            const deltaX = event.touches[0].clientX - previousTouch.x;
-            const deltaY = event.touches[0].clientY - previousTouch.y;
+            const deltaX = event.touches[0].clientX - lastTouch.x;
+            const deltaY = event.touches[0].clientY - lastTouch.y;
 
-            // Atualizar rotação da câmera
-            camera.rotation.y -= deltaX * rotationSpeed;
-            camera.rotation.x -= deltaY * rotationSpeed;
+            cameraRotation.yaw -= deltaX * rotationSpeed;
+            cameraRotation.pitch -= deltaY * rotationSpeed;
 
-            // Limitar a rotação vertical
-            camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+            // Limitar o ângulo de inclinação
+            cameraRotation.pitch = Math.max(-pitchLimit, Math.min(pitchLimit, cameraRotation.pitch));
 
-            previousTouch.x = event.touches[0].clientX;
-            previousTouch.y = event.touches[0].clientY;
+            lastTouch.x = event.touches[0].clientX;
+            lastTouch.y = event.touches[0].clientY;
+
+            updateCameraRotation();
         });
 
         document.addEventListener("touchend", () => {
-            isDragging = false;
+            isTouching = false;
         });
+
+        // Atualizar a rotação da câmera
+        function updateCameraRotation() {
+            const x = Math.cos(cameraRotation.pitch) * Math.sin(cameraRotation.yaw);
+            const y = Math.sin(cameraRotation.pitch);
+            const z = Math.cos(cameraRotation.pitch) * Math.cos(cameraRotation.yaw);
+
+            camera.lookAt(camera.position.x + x, camera.position.y + y, camera.position.z + z);
+        }
 
         // Obter localização do usuário
         function getLocation() {
