@@ -85,6 +85,15 @@
         plane.rotation.x = -Math.PI / 2;
         scene.add(plane);
 
+        // Adicionando a imagem abaixo do usuário
+        const iconTexture = textureLoader.load('https://cdn-icons-png.freepik.com/512/4215/4215138.png');
+        const iconGeometry = new THREE.PlaneGeometry(5, 5);
+        const iconMaterial = new THREE.MeshBasicMaterial({ map: iconTexture, transparent: true });
+        const iconMesh = new THREE.Mesh(iconGeometry, iconMaterial);
+        iconMesh.rotation.x = -Math.PI / 2;
+        iconMesh.position.set(0, 0.01, 0); // Ligeiramente acima do chão para evitar sobreposição visual
+        scene.add(iconMesh);
+
         // Luz ambiente e sol
         const ambientLight = new THREE.AmbientLight(0xcccccc, 2); // Luz ambiente clara
         scene.add(ambientLight);
