@@ -9,7 +9,6 @@
             margin: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
-            background: linear-gradient(to bottom, #0d1a26, #001f3f); /* Céu noturno */
         }
         #info {
             position: absolute;
@@ -64,6 +63,15 @@
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
+
+        // Configuração do céu
+        const loader = new THREE.TextureLoader();
+        const skyTexture = loader.load(
+            'https://i.imgur.com/bzGgZQ5.jpg', // Substitua por uma textura de céu desejada
+            () => {
+                scene.background = skyTexture;
+            }
+        );
 
         // Textura do chão
         const textureLoader = new THREE.TextureLoader();
